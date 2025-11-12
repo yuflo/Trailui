@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>线索收件箱测试 - Phase 3</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #fbbf24;
+      margin-bottom: 20px;
+    }
+    .test-section {
+      background: #1e293b;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .test-section h2 {
+      color: #60a5fa;
+      margin-top: 0;
+    }
+    button {
+      background: linear-gradient(to right, #0ea5e9, #3b82f6);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    pre {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+    }
+    .success {
+      color: #22c55e;
+    }
+    .error {
+      color: #ef4444;
+    }
+    .info {
+      color: #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Phase 3: 线索收件箱集成测试</h1>
+    
+    <div class="test-section">
+      <h2>📋 测试说明</h2>
+      <p>这个页面用于测试新的线索收件箱架构集成。</p>
+      <p>打开浏览器控制台查看详细日志。</p>
+    </div>
+    
+    <div class="test-section">
+      <h2>🔧 测试步骤</h2>
+      <button onclick="runTest1()">1. 初始化线索系统</button>
+      <button onclick="runTest2()">2. 追踪线索</button>
+      <button onclick="runTest3()">3. 查看实例数据</button>
+      <button onclick="runTest4()">4. 测试实例隔离</button>
+      <button onclick="clearResults()">清空结果</button>
+      <pre id="results"></pre>
+    </div>
+    
+    <div class="test-section">
+      <h2>✅ 预期结果</h2>
+      <ul>
+        <li>初始化后应该有3条Demo线索</li>
+        <li>追踪线索后应该创建独立的故事实例</li>
+        <li>每个线索都有独立的story_instance_id</li>
+        <li>修改一个实例不影响另一个</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script type="module">
+    import { ClueInitializer } from './engine/utils/ClueInitializer.ts';
+    import { ClueService, StoryService } from './engine/services/business/index.ts';
+    import { InstanceCacheManager } from './engine/cache/InstanceCacheManager.ts';
+    
+    let results = document.getElementById('results');
+    
+    function log(message, type = 'info') {
+      const className = type;
+      const timestamp = new Date().toLocaleTimeString();
+      results.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+      console.log(`[Test] ${message}`);
+    }
+    
+    window.clearResults = function() {
+      results.innerHTML = '';
+    };
+    
+    window.runTest1 = function() {
+      log('=== 测试1: 初始化线索系统 ===', 'info');
+      
+      try {
+        // 重置
+        InstanceCacheManager.reset();
+        InstanceCacheManager.initialize();
+        
+        // 初始化
+        ClueInitializer.addDemoClues();
+        ClueInitializer.initializeClueInbox('demo-player');
+        
+        // 获取线索
+        const clues = ClueService.getPlayerClues('demo-player');
+        
+        log(`✅ 成功初始化 ${clues.length} 条线索`, 'success');
+        clues.forEach(clue => {
+          log(`  - ${clue.clue_id}: ${clue.title} (${clue.status})`, 'info');
+        });
+        
+        log(`统计: 未读=${ClueService.getUnreadCount()}, 追踪=${ClueService.getTrackingCount()}`, 'info');
+      } catch (error) {
+        log(`❌ 初始化失败: ${error.message}`, 'error');
+      }
+    };
+    
+    window.runTest2 = function() {
+      log('=== 测试2: 追踪线索 ===', 'info');
+      
+      try {
+        // 追踪CLUE_004
+        const instance1 = ClueService.trackClue('demo-player', 'CLUE_004');
+        log(`✅ 追踪CLUE_004 → ${instance1}`, 'success');
+        
+        // 启动故事
+        StoryService.startStory(instance1);
+        log(`✅ 启动故事实例`, 'success');
+        
+        // 查看数据
+        const story = StoryService.getStoryInstance(instance1);
+        log(`  - 状态: ${story.status}`, 'info');
+        log(`  - 进度: ${story.progress_percentage}%`, 'info');
+        log(`  - 场景: ${story.scene_sequence.length}个`, 'info');
+      } catch (error) {
+        log(`❌ 追踪失败: ${error.message}`, 'error');
+      }
+    };
+    
+    window.runTest3 = function() {
+      log('=== 测试3: 查看实例数据 ===', 'info');
+      
+      try {
+        const clues = ClueService.getPlayerClues('demo-player');
+        
+        clues.forEach(clue => {
+          if (clue.story_instance_id) {
+            const story = StoryService.getStoryInstance(clue.story_instance_id);
+            log(`📊 ${clue.clue_id}:`, 'info');
+            log(`  - instance_id: ${story.instance_id}`, 'info');
+            log(`  - 进度: ${story.progress_percentage}%`, 'info');
+            log(`  - 状态: ${story.status}`, 'info');
+          } else {
+            log(`📊 ${clue.clue_id}: 未追踪`, 'info');
+          }
+        });
+      } catch (error) {
+        log(`❌ 查看失败: ${error.message}`, 'error');
+      }
+    };
+    
+    window.runTest4 = function() {
+      log('=== 测试4: 实例隔离验证 ===', 'info');
+      
+      try {
+        // 追踪两个线索
+        const instance1 = ClueService.trackClue('demo-player', 'CLUE_004');
+        const instance2 = ClueService.trackClue('demo-player', 'CLUE_005');
+        
+        StoryService.startStory(instance1);
+        StoryService.startStory(instance2);
+        
+        // 修改第一个实例的进度
+        InstanceCacheManager.updateStoryInstance(instance1, {
+          progress_percentage: 75
+        });
+        
+        // 验证隔离
+        const story1 = StoryService.getStoryInstance(instance1);
+        const story2 = StoryService.getStoryInstance(instance2);
+        
+        log(`✅ 实例1进度: ${story1.progress_percentage}%`, 'success');
+        log(`✅ 实例2进度: ${story2.progress_percentage}%`, 'success');
+        
+        if (story1.progress_percentage === 75 && story2.progress_percentage === 0) {
+          log(`✅✅ 实例隔离验证通过！`, 'success');
+        } else {
+          log(`❌ 实例隔离验证失败！`, 'error');
+        }
+      } catch (error) {
+        log(`❌ 测试失败: ${error.message}`, 'error');
+      }
+    };
+    
+    // 自动运行测试1
+    log('页面加载完成，准备测试...', 'info');
+    log('点击按钮开始测试', 'info');
+  </script>
+</body>
+</html>
