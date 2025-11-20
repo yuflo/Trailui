@@ -98,7 +98,7 @@ export const demoStoryMap: Record<string, Story> = {
             involved_entities: [
               {
                 id: 'npc_fatty_tang',
-                name: '肥棠',
+                // name: '肥棠',  // ❌ 删除：这是静态配置，从 Registry 读取
                 status_summary: '酒吧保镖，看起来很警惕',
                 composure: '心防 70/100',
                 rapport: {
@@ -204,7 +204,7 @@ export const demoStoryMap: Record<string, Story> = {
             involved_entities: [
               {
                 id: 'npc_xiaoxue',
-                name: '小雪',
+                // name: '小雪',  // ❌ 删除：这是静态配置，从 Registry 读取
                 status_summary: '酒保，看起来很紧张',
                 composure: '心防 60/100',
                 rapport: {

@@ -2,142 +2,163 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ==================== GTA 设计系统 - Tokyo Faded Poster ==================== */
+
 :root {
+  /* ========== 字体系统 ========== */
   --font-size: 16px;
   --font-sans: 'Rajdhani', system-ui, -apple-system, sans-serif;
   --font-heading: 'Orbitron', system-ui, -apple-system, sans-serif;
   --font-comic: 'Bangers', cursive;
   --font-mono: 'JetBrains Mono', monospace;
-  --background: #0a0e1a;
-  --foreground: #e2e8f0;
-  --card: #0f172a;
-  --card-foreground: #e2e8f0;
-  --popover: #1e293b;
-  --popover-foreground: #e2e8f0;
-  --primary: #06b6d4;
-  --primary-foreground: #0f172a;
-  --secondary: #6366f1;
-  --secondary-foreground: #e2e8f0;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #6366f1;
-  --accent-foreground: #e2e8f0;
-  --destructive: #ef4444;
-  --destructive-foreground: #fef2f2;
-  --border: rgba(148, 163, 184, 0.2);
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  
+  /* ========== GTA 核心3色配色 ========== */
+  /* 主色：砖红 - 褪色海报的暖调底色 */
+  --brick-red: #c85a54;
+  --brick-red-dark: #a84840;
+  --brick-red-light: #d47872;
+  
+  /* 主色：深红黑 - 墨水浸染的深色调 */
+  --dark-red: #2d1618;
+  --deep-black: #0d0404;
+  --ink-black: #1a0a0c;
+  
+  /* 主色：纯白 - 纸张高光和文字 */
+  --paper-white: #ffffff;
+  --paper-off-white: #fafafa;
+  
+  /* ========== 强调色系统 ========== */
+  /* 警报红 - 通缉等级、危险提示 */
+  --alert-red: #ff0040;
+  --alert-red-glow: rgba(255, 0, 64, 0.6);
+  
+  /* 高亮黄 - 信息高亮、提示 */
+  --highlight-yellow: #ffd700;
+  --highlight-yellow-glow: rgba(255, 215, 0, 0.5);
+  
+  /* 通缉红 - 五星通缉的深红 */
+  --wanted-red: #8b0000;
+  --wanted-red-glow: rgba(139, 0, 0, 0.7);
+  
+  /* ========== 徽章色系统（4种线索类型）========== */
+  /* 环境 - 棕褐色调 */
+  --badge-ambient: #8b7355;
+  --badge-ambient-bg: rgba(139, 115, 85, 0.15);
+  --badge-ambient-border: rgba(139, 115, 85, 0.4);
+  
+  /* 传闻 - 银灰色调 */
+  --badge-rumor: #a8a8a8;
+  --badge-rumor-bg: rgba(168, 168, 168, 0.15);
+  --badge-rumor-border: rgba(168, 168, 168, 0.4);
+  
+  /* 警讯 - 深红色调 */
+  --badge-alert: #b22222;
+  --badge-alert-bg: rgba(178, 34, 34, 0.15);
+  --badge-alert-border: rgba(178, 34, 34, 0.4);
+  
+  /* 赛博 - 深蓝色调 */
+  --badge-cyber: #4169e1;
+  --badge-cyber-bg: rgba(65, 105, 225, 0.15);
+  --badge-cyber-border: rgba(65, 105, 225, 0.4);
+  
+  /* ========== 灰度系统（9级）========== */
+  --gray-50: #f8f8f8;
+  --gray-100: #e8e8e8;
+  --gray-200: #d4d4d4;
+  --gray-300: #b8b8b8;
+  --gray-400: #9c9c9c;
+  --gray-500: #6e6e6e;
+  --gray-600: #4a4a4a;
+  --gray-700: #2e2e2e;
+  --gray-800: #1a1a1a;
+  --gray-900: #0a0a0a;
+  
+  /* ========== 阴影系统 ========== */
+  /* Panel 阴影 - 浮起感 */
+  --shadow-panel: 
+    0 4px 8px rgba(13, 4, 4, 0.3),
+    0 8px 16px rgba(13, 4, 4, 0.2);
+  
+  /* Card 阴影 - 悬浮感 */
+  --shadow-card:
+    0 2px 4px rgba(13, 4, 4, 0.2),
+    0 4px 8px rgba(13, 4, 4, 0.15);
+  
+  /* Pin 阴影 - 别针刺穿感 */
+  --shadow-pin:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.2);
+  
+  /* ========== ShadCN 兼容层（保持现有组件工作）========== */
+  --background: var(--deep-black);
+  --foreground: var(--paper-white);
+  --card: var(--ink-black);
+  --card-foreground: var(--paper-white);
+  --popover: var(--dark-red);
+  --popover-foreground: var(--paper-white);
+  --primary: var(--brick-red);
+  --primary-foreground: var(--paper-white);
+  --secondary: var(--gray-600);
+  --secondary-foreground: var(--paper-white);
+  --muted: var(--gray-700);
+  --muted-foreground: var(--gray-400);
+  --accent: var(--alert-red);
+  --accent-foreground: var(--paper-white);
+  --destructive: var(--alert-red);
+  --destructive-foreground: var(--paper-white);
+  --border: var(--gray-700);
   --input: transparent;
-  --input-background: #1e293b;
-  --switch-background: #334155;
-  --font-weight-medium: 600;
-  --font-weight-normal: 400;
-  --ring: #06b6d4;
-  --gta-green: #39ff14;
-  --gta-yellow: #ffeb3b;
-  --gta-orange: #ff6f00;
-  --gta-pink: #ff00ff;
-  --gta-blue: #00d4ff;
-  --comic-outline: #000000;
-  --comic-outline-width: 3px;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --input-background: var(--ink-black);
+  --switch-background: var(--gray-600);
+  --ring: var(--brick-red);
+  
+  /* Chart colors */
+  --chart-1: var(--brick-red);
+  --chart-2: var(--badge-ambient);
+  --chart-3: var(--badge-cyber);
+  --chart-4: var(--highlight-yellow);
+  --chart-5: var(--alert-red);
+  
+  /* Sidebar (保持兼容) */
+  --sidebar: var(--paper-white);
+  --sidebar-foreground: var(--deep-black);
+  --sidebar-primary: var(--deep-black);
+  --sidebar-primary-foreground: var(--paper-white);
+  --sidebar-accent: var(--gray-100);
+  --sidebar-accent-foreground: var(--deep-black);
+  --sidebar-border: var(--gray-200);
+  --sidebar-ring: var(--gray-400);
+  
+  /* Radius */
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-  --background: #0a0e1a;
-  --foreground: #e2e8f0;
-  --card: #0f172a;
-  --card-foreground: #e2e8f0;
-  --popover: #1e293b;
-  --popover-foreground: #e2e8f0;
-  --primary: #06b6d4;
-  --primary-foreground: #0f172a;
-  --secondary: #6366f1;
-  --secondary-foreground: #e2e8f0;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #6366f1;
-  --accent-foreground: #e2e8f0;
-  --destructive: #ef4444;
-  --destructive-foreground: #fef2f2;
-  --border: rgba(148, 163, 184, 0.2);
-  --input: #1e293b;
-  --ring: #06b6d4;
-  --font-weight-medium: 600;
-  --font-weight-normal: 400;
-  --gta-green: #39ff14;
-  --gta-yellow: #ffeb3b;
-  --gta-orange: #ff6f00;
-  --gta-pink: #ff00ff;
-  --gta-blue: #00d4ff;
-  --comic-outline: #000000;
-  --comic-outline-width: 3px;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+/* ========== 动画系统 ========== */
+
+/* 扫描线动画 - 原有的快速扫描线（保留） */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-input-background: var(--input-background);
-  --color-switch-background: var(--switch-background);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+/* 扫描线滚动动画 - 缓慢的背景扫描线（25秒） */
+@keyframes scanline-scroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }
+
+/* ========== 基础样式层 ========== */
 
 @layer base {
   * {
@@ -255,7 +276,7 @@ html {
 
 /* Comic outline effect for cards */
 .comic-outline {
-  outline: var(--comic-outline-width) solid var(--comic-outline);
+  outline: 3px solid #000000;
   outline-offset: -3px;
 }
 
@@ -273,7 +294,7 @@ html {
   position: relative;
   border-radius: 20px;
   padding: 1rem 1.5rem;
-  border: 3px solid var(--comic-outline);
+  border: 3px solid #000000;
 }
 
 .speech-bubble::after {
@@ -285,7 +306,7 @@ html {
   height: 0;
   border-left: 15px solid transparent;
   border-right: 0px solid transparent;
-  border-top: 15px solid var(--comic-outline);
+  border-top: 15px solid #000000;
 }
 
 .speech-bubble::before {
@@ -306,7 +327,7 @@ html {
   position: relative;
   border-radius: 20px;
   padding: 1rem 1.5rem;
-  border: 3px solid var(--comic-outline);
+  border: 3px solid #000000;
 }
 
 .speech-bubble-npc::after {
@@ -318,7 +339,7 @@ html {
   height: 0;
   border-right: 15px solid transparent;
   border-left: 0px solid transparent;
-  border-top: 15px solid var(--comic-outline);
+  border-top: 15px solid #000000;
 }
 
 .speech-bubble-npc::before {
@@ -339,19 +360,19 @@ html {
   font-family: var(--font-comic);
   letter-spacing: 0.05em;
   text-shadow: 
-    2px 2px 0px var(--comic-outline),
-    -1px -1px 0px var(--comic-outline),
-    1px -1px 0px var(--comic-outline),
-    -1px 1px 0px var(--comic-outline);
+    2px 2px 0px #000000,
+    -1px -1px 0px #000000,
+    1px -1px 0px #000000,
+    -1px 1px 0px #000000;
 }
 
 /* Enhanced title with outline */
 .enhanced-title {
   text-shadow: 
-    1px 1px 0px var(--comic-outline),
-    -1px -1px 0px var(--comic-outline),
-    1px -1px 0px var(--comic-outline),
-    -1px 1px 0px var(--comic-outline),
+    1px 1px 0px #000000,
+    -1px -1px 0px #000000,
+    1px -1px 0px #000000,
+    -1px 1px 0px #000000,
     0 0 20px currentColor;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -367,15 +388,6 @@ html {
 }
 
 /* Scanline effect - now responsive to archetype */
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
-}
-
 .scanline-overlay {
   position: relative;
   overflow: hidden;
@@ -433,7 +445,7 @@ html {
   --scanline-visibility: 1;
   --halftone-size: 15px;
   --halftone-opacity: 0.1;
-  --theme-neon: var(--gta-blue);
+  --theme-neon: #00d4ff;
   --theme-saturation: 80%;
   --comic-intensity: 0.8;
   --panel-glow: 0 0 20px rgba(0, 212, 255, 0.2);
@@ -446,7 +458,7 @@ html {
   --scanline-visibility: 1;
   --halftone-size: 18px;
   --halftone-opacity: 0.12;
-  --theme-neon: var(--gta-orange);
+  --theme-neon: #ff6f00;
   --theme-saturation: 110%;
   --comic-intensity: 1.0;
   --panel-glow: 0 0 25px rgba(255, 111, 0, 0.3);
@@ -459,7 +471,7 @@ html {
   --scanline-visibility: 1;
   --halftone-size: 12px;
   --halftone-opacity: 0.15;
-  --theme-neon: var(--gta-pink);
+  --theme-neon: #ff00ff;
   --theme-saturation: 130%;
   --comic-intensity: 1.2;
   --panel-glow: 0 0 30px rgba(255, 0, 255, 0.4);
@@ -474,7 +486,7 @@ html {
   --scanline-visibility: 1;
   --halftone-size: 35px;
   --halftone-opacity: 0.06;
-  --theme-neon: var(--gta-yellow);
+  --theme-neon: #ffeb3b;
   --theme-saturation: 60%;
   --comic-intensity: 0.5;
   --panel-glow: 0 0 15px rgba(255, 235, 59, 0.15);
@@ -600,4 +612,46 @@ html {
 
 .neon-pulse {
   animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* ========== Toast 通知系统（Sonner）- GTA 硬边覆盖 ========== */
+/* 覆盖 Sonner 库的默认圆角样式，强制使用 GTA 硬边美学 */
+[data-sonner-toast] {
+  border-radius: 0 !important;
+  border: 3px solid #000 !important;
+  box-shadow: 4px 4px 0 #000, 0 0 20px rgba(168, 60, 60, 0.3) !important;
+  background: var(--dark-red) !important;
+  color: var(--paper-white) !important;
+}
+
+/* Toast 关闭按钮硬边化 */
+[data-sonner-toast] > button[data-close-button] {
+  border-radius: 0 !important;
+  border: 2px solid #000 !important;
+  background: var(--brick-red) !important;
+  color: #000 !important;
+  transition: all 0.2s ease;
+}
+
+[data-sonner-toast] > button[data-close-button]:hover {
+  background: var(--paper-white) !important;
+  transform: scale(1.1);
+}
+
+/* Toast 成功状态 */
+[data-sonner-toast][data-type="success"] {
+  border-color: var(--highlight-yellow) !important;
+  box-shadow: 4px 4px 0 #000, 0 0 20px var(--highlight-yellow-glow) !important;
+}
+
+/* Toast 错误状态 */
+[data-sonner-toast][data-type="error"] {
+  border-color: var(--alert-red) !important;
+  box-shadow: 4px 4px 0 #000, 0 0 20px var(--alert-red-glow) !important;
+}
+
+/* Toast 加载状态 */
+[data-sonner-toast][data-type="loading"] {
+  border-color: var(--brick-red-light) !important;
+  box-shadow: 4px 4px 0 #000, 0 0 15px rgba(200, 90, 84, 0.4) !important;
 }

@@ -1,196 +1,140 @@
 /**
- * NPCService - NPC业务服务（无状态）
+ * NPC Service
  * 
- * 职责：
- * - 生成NPC对话（LLM模拟）
- * - 管理NPC状态（关系值、情绪）
- * - 处理玩家与NPC的交互
+ * 业务层服务：NPC 数据管理
+ * 负责合并 NPC Registry（静态）和 Scenario（动态）的数据
  */
 
-import { InstanceCacheManager } from '../../cache/InstanceCacheManager';
-import { MockNPCProvider } from './MockDataProvider';
-import type { LLMDialogueRecord, NPCInstance } from '../../../types/instance.types';
+import type { NPCEntity, EnrichedNPCEntity } from '../../../types';
+import { getNPCConfig, hasNPCConfig, getNPCAvatar } from '../../../data/hong-kong/npcs';
 
 /**
- * NPC服务
+ * 丰富 NPC 实体数据
+ * 
+ * 将 Scenario 中的动态数据与 Registry 中的静态数据合并
+ * 
+ * @param npcEntity - 来自 Scenario 的 NPC 数据（只有动态属性）
+ * @returns 完整的 NPC 数据（包含头像、职业等）
+ * 
+ * @example
+ * ```typescript
+ * // Scenario 中的数据（只有动态状态）
+ * const scenarioNPC = {
+ *   id: 'npc_fatty_tang',
+ *   status_summary: '警惕地看着你',
+ *   composure: '心防 70/100',
+ *   rapport: { sentiment: '警惕', intensity: 20 }
+ * };
+ * 
+ * // 丰富后的数据（动态 + 静态）
+ * const enrichedNPC = enrichNPCEntity(scenarioNPC);
+ * // {
+ * //   ...scenarioNPC,
+ * //   name: '肥棠',            // 来自 Registry
+ * //   avatar: 'figma:asset/5b647bc6...',  // 来自 Registry
+ * //   role: '保镖',            // 来自 Registry
+ * //   bio: '掘金者酒吧的保镖...'  // 来自 Registry
+ * // }
+ * ```
  */
-export class NPCService {
-  /**
-   * 🔥 生成NPC对话
-   * 
-   * Demo: 使用 MockNPCProvider 返回预设对话
-   * 正式版: 调用 LLM API 动态生成个性化对话
-   * 
-   * @param npcInstanceId - NPC实例ID
-   * @param playerInput - 玩家输入
-   * @param context - 对话上下文
-   * @returns NPC回复文本
-   */
-  static generateNPCDialogue(
-    npcInstanceId: string,
-    playerInput: string,
-    context?: any
-  ): string {
-    const npcInstance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    if (!npcInstance) {
-      throw new Error(`[NPCService] NPC instance not found: ${npcInstanceId}`);
-    }
-    
-    // 🔥 Demo: 使用 mock 数据
-    const response = MockNPCProvider.generateNPCDialogue(
-      npcInstance.npc_template_id,
-      playerInput,
-      {
-        npcState: npcInstance.current_state,
-        interactionHistory: this.getInteractionHistory(npcInstanceId),
-        ...context
-      }
-    );
-    
-    // 🔥 正式版替换成：
-    // const response = await LLMService.generateDialogue({
-    //   npcProfile: npcInstance.npc_data,
-    //   npcState: npcInstance.current_state,
-    //   playerInput: playerInput,
-    //   conversationHistory: this.getDialogueHistory(npcInstanceId),
-    //   sceneContext: getSceneContext(npcInstance.story_instance_id)
-    // });
-    
-    // 保存对话到 Cache（数据库）
-    const dialogueRecord: LLMDialogueRecord = {
-      record_id: `dialogue_${npcInstanceId}_${Date.now()}`,
-      npc_instance_id: npcInstanceId,
-      story_instance_id: npcInstance.story_instance_id,
-      player_id: npcInstance.player_id,
-      turn_number: this.getNextTurnNumber(npcInstanceId),
-      player_input: playerInput,
-      npc_response: response,
-      npc_state_snapshot: { ...npcInstance.current_state },
-      created_at: Date.now(),
-      llm_model: 'mock-gpt-4', // Demo阶段
-      generation_params: {
-        temperature: 0.9,
-        max_tokens: 300
+export function enrichNPCEntity(npcEntity: NPCEntity): EnrichedNPCEntity {
+  const config = getNPCConfig(npcEntity.id);
+  
+  if (!config) {
+    // 如果没有配置，返回原数据 + 默认头像
+    console.warn(`[NPC Service] NPC "${npcEntity.id}" 未在 Registry 中注册`);
+    return {
+      ...npcEntity,
+      name: '未知',
+      avatar: getNPCAvatar(npcEntity.id), // 使用默认头像
+      role: '未知',
+      bio: `详细信息尚未录入。`,
+      // UI 增强字段使用默认值
+      photo: getNPCAvatar(npcEntity.id),
+      nameJP: undefined,
+      stats: {
+        trust: 50,
+        danger: 50
       }
     };
-    
-    InstanceCacheManager.saveLLMDialogue(dialogueRecord);
-    
-    // 更新交互统计
-    this.updateInteractionStats(npcInstanceId);
-    
-    console.log(`[NPCService] ✅ Generated dialogue for NPC: ${npcInstanceId}`);
-    return response;
   }
   
-  /**
-   * 获取对话历史
-   */
-  static getDialogueHistory(npcInstanceId: string, limit: number = 10): LLMDialogueRecord[] {
-    return InstanceCacheManager.getLLMDialogueHistory(npcInstanceId, limit);
-  }
+  // 计算 UI 增强字段
+  const rapportIntensity = npcEntity.rapport?.intensity ?? 50;
+  const trust = Math.round(rapportIntensity); // 信任度 = 好感度强度
+  const danger = 100 - trust; // 危险度 = 反向信任度
   
-  /**
-   * 获取交互历史摘要
-   */
-  private static getInteractionHistory(npcInstanceId: string): string[] {
-    const npcInstance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    if (!npcInstance) {
-      return [];
+  // 合并 Registry 静态数据和 Scenario 动态数据
+  return {
+    ...npcEntity,           // Scenario 的动态数据（优先级高）
+    name: config.name,      // Registry 的静态数据
+    avatar: config.avatar,  // Registry 的静态数据
+    role: config.role,
+    bio: config.bio,
+    // UI 增强字段
+    photo: config.avatar,   // 使用相同的头像作为照片
+    nameJP: undefined,      // 暂未实现（未来可从 Registry 读取）
+    stats: {
+      trust,
+      danger
     }
-    
-    return npcInstance.interaction_summary.revealed_secrets || [];
-  }
-  
-  /**
-   * 获取下一个对话轮次编号
-   */
-  private static getNextTurnNumber(npcInstanceId: string): number {
-    const history = this.getDialogueHistory(npcInstanceId, 1000);
-    return history.length + 1;
-  }
-  
-  /**
-   * 更新交互统计
-   */
-  private static updateInteractionStats(npcInstanceId: string): void {
-    const npcInstance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    if (!npcInstance) {
-      return;
-    }
-    
-    InstanceCacheManager.updateNPCInstance(npcInstanceId, {
-      ...npcInstance.current_state
-    });
-    
-    // 更新交互摘要（直接修改实例，因为这是统计数据）
-    const instance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    if (instance) {
-      instance.interaction_summary.total_interactions += 1;
-      instance.interaction_summary.last_interaction_at = Date.now();
-    }
-  }
-  
-  /**
-   * 🔥 更新NPC状态（关系值、情绪等）
-   * 
-   * @param npcInstanceId - NPC实例ID
-   * @param stateUpdates - 状态更新
-   */
-  static updateNPCState(
-    npcInstanceId: string,
-    stateUpdates: {
-      relationship?: number;
-      mood?: 'hostile' | 'neutral' | 'friendly' | 'fearful';
-      alertness?: number;
-      trust_level?: number;
-    }
-  ): void {
-    InstanceCacheManager.updateNPCInstance(npcInstanceId, stateUpdates);
-    
-    console.log(`[NPCService] ✅ Updated NPC state: ${npcInstanceId}`, stateUpdates);
-  }
-  
-  /**
-   * 获取NPC当前状态
-   */
-  static getNPCState(npcInstanceId: string) {
-    const npcInstance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    return npcInstance ? npcInstance.current_state : null;
-  }
-  
-  /**
-   * 获取场景中的所有NPC
-   */
-  static getSceneNPCs(sceneInstanceId: string): NPCInstance[] {
-    const sceneInstance = InstanceCacheManager.getSceneInstance(sceneInstanceId);
-    if (!sceneInstance) {
-      return [];
-    }
-    
-    return InstanceCacheManager.getNPCInstances(sceneInstance.npc_instance_ids);
-  }
-  
-  /**
-   * 🔥 触发NPC秘密揭示
-   * 
-   * Demo: 手动添加秘密
-   * 正式版: LLM根据对话动态判断
-   */
-  static revealSecret(npcInstanceId: string, secret: string): void {
-    const npcInstance = InstanceCacheManager.getNPCInstance(npcInstanceId);
-    if (!npcInstance) {
-      throw new Error(`[NPCService] NPC instance not found: ${npcInstanceId}`);
-    }
-    
-    const revealedSecrets = [...npcInstance.interaction_summary.revealed_secrets];
-    if (!revealedSecrets.includes(secret)) {
-      revealedSecrets.push(secret);
-      
-      // 更新实例
-      npcInstance.interaction_summary.revealed_secrets = revealedSecrets;
-      
-      console.log(`[NPCService] ✅ NPC revealed secret: ${secret}`);
-    }
-  }
+  };
 }
+
+/**
+ * 批量丰富 NPC 实体数据
+ * 
+ * @param npcEntities - NPC 实体数组
+ * @returns 丰富后的 NPC 实体数组
+ */
+export function enrichNPCEntities(npcEntities: NPCEntity[]): EnrichedNPCEntity[] {
+  return npcEntities.map(enrichNPCEntity);
+}
+
+/**
+ * 创建简化的 NPC 实体（用于 Scenario 数据）
+ * 
+ * 从完整的 NPC 数据中提取动态属性，去除静态属性
+ * 用于在 Scenario 中只存储必要的动态数据
+ * 
+ * @param fullNPC - 完整的 NPC 数据
+ * @returns 简化的 NPC 数据（只包含动态属性）
+ */
+export function createSimplifiedNPCEntity(fullNPC: EnrichedNPCEntity): NPCEntity {
+  const { avatar, role, bio, name, ...dynamicProps } = fullNPC;
+  return dynamicProps;
+}
+
+/**
+ * 验证 NPC 是否已注册
+ * 
+ * @param npcId - NPC ID
+ * @returns 是否已注册
+ */
+export function isNPCRegistered(npcId: string): boolean {
+  return hasNPCConfig(npcId);
+}
+
+/**
+ * 获取 NPC 的默认好感度
+ * 
+ * @param npcId - NPC ID
+ * @returns 默认好感度情绪，如果未配置则返回 '中立'
+ */
+export function getDefaultSentiment(npcId: string): string {
+  const config = getNPCConfig(npcId);
+  return config?.default_sentiment || '中立';
+}
+
+/**
+ * NPC Service 单例
+ */
+export const NPCService = {
+  enrichNPCEntity,
+  enrichNPCEntities,
+  createSimplifiedNPCEntity,
+  isNPCRegistered,
+  getDefaultSentiment,
+  getNPCConfig,
+  getNPCAvatar
+};

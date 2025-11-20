@@ -3,6 +3,8 @@
  * 
  * 状态管理器
  * 负责维护和管理游戏状态
+ * 
+ * Phase 6.1: 改为单例模式
  */
 
 import type { 
@@ -16,13 +18,33 @@ import type {
 } from '../../types';
 
 /**
- * 状态管理器类
+ * 状态管理器类（单例模式）
  */
 export class StateManager {
+  private static instance: StateManager | null = null;
   private state: GameState;
   
-  constructor() {
+  private constructor() {
     this.state = this.createInitialState();
+  }
+  
+  /**
+   * 获取StateManager单例
+   */
+  static getInstance(): StateManager {
+    if (!StateManager.instance) {
+      StateManager.instance = new StateManager();
+      console.log('[StateManager] ✅ Singleton instance created');
+    }
+    return StateManager.instance;
+  }
+  
+  /**
+   * 重置单例（仅用于测试）
+   */
+  static resetInstance(): void {
+    StateManager.instance = null;
+    console.log('[StateManager] ⚠️ Singleton instance reset');
   }
   
   /**
@@ -582,6 +604,12 @@ export class StateManager {
     
     // ✅ 更新 Map
     this.state.trackedStories.set(clueId, updatedStory);
+    
+    // 🔥 BUG FIX: 清空 activeStoryClueId（允许进入新故事）
+    if (this.state.activeStoryClueId === clueId) {
+      this.state.activeStoryClueId = null;
+      console.log(`[StateManager] 🔓 Cleared active story: ${clueId} (story completed)`);
+    }
     
     console.log(`[StateManager] ✅ Story marked as completed (immutable): ${trackedData.title}`, {
       completionClueId,

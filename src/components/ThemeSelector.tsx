@@ -39,36 +39,36 @@ export function ThemeSelector({ themes, currentThemeId, onThemeChange }: ThemeSe
 
   return (
     <div className="flex items-center gap-3">
-      <Palette className="w-4 h-4 text-cyan-400" />
+      <Palette className="w-4 h-4 text-[#fbbf24]" />
       <Select value={currentThemeId} onValueChange={onThemeChange}>
-        <SelectTrigger className="w-[280px] bg-slate-950/80 border-cyan-900/50 hover:border-cyan-700/50 transition-colors">
+        <SelectTrigger className="w-[280px] bg-[#140f0f]/80 border-[3px] border-black hover:border-[#A83C3C] transition-colors">
           <SelectValue>
             <div className="flex items-center gap-2">
               <span>{currentTheme?.icon}</span>
               <span>{currentTheme?.title}</span>
               {currentTheme?.scenarioCount !== undefined && (
-                <Badge variant="outline" className="ml-auto text-xs border-cyan-800/50">
+                <Badge variant="outline" className="ml-auto text-xs border-black bg-white text-black">
                   {currentTheme.scenarioCount} 场景
                 </Badge>
               )}
             </div>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="bg-slate-950/95 border-cyan-900/50 backdrop-blur-xl">
+        <SelectContent className="bg-[#140f0f]/95 border-[3px] border-black backdrop-blur-xl">
           <SelectGroup>
-            <SelectLabel className="text-cyan-400">选择故事场景</SelectLabel>
+            <SelectLabel className="text-[#fbbf24]">选择故事场景</SelectLabel>
             {themes.map((theme) => (
               <SelectItem 
                 key={theme.id} 
                 value={theme.id}
-                className="cursor-pointer hover:bg-cyan-950/30 focus:bg-cyan-950/40"
+                className="cursor-pointer hover:bg-[#A83C3C]/20 focus:bg-[#A83C3C]/30"
               >
                 <div className="flex flex-col gap-1 py-1">
                   <div className="flex items-center gap-2">
                     <span>{theme.icon}</span>
                     <span>{theme.title}</span>
                     {theme.scenarioCount !== undefined && (
-                      <Badge variant="outline" className="ml-auto text-xs border-cyan-800/50">
+                      <Badge variant="outline" className="ml-auto text-xs border-black bg-white text-black">
                         {theme.scenarioCount} 场景
                       </Badge>
                     )}
@@ -82,7 +82,7 @@ export function ThemeSelector({ themes, currentThemeId, onThemeChange }: ThemeSe
                         <Badge 
                           key={idx} 
                           variant="secondary" 
-                          className="text-xs px-1.5 py-0 bg-cyan-950/30 text-cyan-300 border-cyan-800/30"
+                          className="text-xs px-1.5 py-0 bg-[#A83C3C]/30 text-white border-black"
                         >
                           {tag}
                         </Badge>

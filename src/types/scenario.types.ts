@@ -131,13 +131,36 @@ export interface Rapport {
 
 /**
  * NPC 实体
+ * 
+ * ⚠️ 只包含运行时动态状态
+ * 静态配置（name, avatar, role, bio）从 Registry 读取
  */
 export interface NPCEntity {
   id: string;
-  name: string;
   status_summary: string;
   composure: string;
   rapport: Rapport;
+}
+
+/**
+ * 丰富的 NPC 实体（静态 + 动态）
+ * 
+ * 由 NPCService.enrichNPCEntities() 返回
+ * 包含静态配置（从 Registry）+ 动态状态（从 Cache）
+ */
+export interface EnrichedNPCEntity extends NPCEntity {
+  name: string;           // 静态：来自 Registry
+  avatar: string;         // 静态：来自 Registry
+  role?: string;          // 静态：来自 Registry
+  bio?: string;           // 静态：来自 Registry
+  
+  // UI 增强字段（由 NPCService 填充）
+  photo?: string;         // GTA风格头像照片
+  nameJP?: string;        // 日文假名注音
+  stats?: {               // GTA风格属性
+    trust: number;        // 信任度 0-100
+    danger: number;       // 危险度 0-100
+  };
 }
 
 /**

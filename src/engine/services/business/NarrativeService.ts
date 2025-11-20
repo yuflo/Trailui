@@ -6,12 +6,21 @@
  * - 处理玩家与NPC的交互
  * - 调用LLM服务生成动态内容
  * - 保存LLM生成历史
+ * - 管理叙事线索数据（registerStoryClues, getRandomClues）
  */
 
 import { InstanceCacheManager } from '../../cache/InstanceCacheManager';
 import { LLMServiceFactory } from '../llm/LLMServiceFactory';
 import { NPCService } from './NPCService';
-import type { NarrativeUnit } from '../../../types/instance.types';
+import type { NarrativeUnit, NarrativeThread } from '../../../types/instance.types';
+
+/**
+ * 故事线索数据映射
+ * 
+ * Key: storyId
+ * Value: 该故事的线索数组
+ */
+const storyCluesMap: Record<string, NarrativeThread[]> = {};
 
 /**
  * 叙事服务
@@ -238,5 +247,66 @@ export class NarrativeService {
    */
   private static generateUUID(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+  
+  // ========== 叙事线索管理功能（从 NarrativeClueServiceImpl 迁移） ==========
+  
+  /**
+   * 注册故事的线索数据
+   * 
+   * @param storyId 故事ID
+   * @param clues 线索数组
+   */
+  static registerStoryClues(storyId: string, clues: NarrativeThread[]): void {
+    storyCluesMap[storyId] = clues;
+    console.log(`[NarrativeService] Registered ${clues.length} clues for story: ${storyId}`);
+  }
+  
+  /**
+   * 获取指定故事的随机线索
+   * 
+   * @param storyId 故事ID
+   * @param count 线索数量
+   * @returns 随机线索数组
+   */
+  static getRandomClues(storyId: string, count: number): NarrativeThread[] {
+    const allClues = storyCluesMap[storyId];
+    
+    if (!allClues || allClues.length === 0) {
+      console.warn(`[NarrativeService] No clues found for story: ${storyId}`);
+      return [];
+    }
+    
+    // 随机抽取指定数量的线索（不重复）
+    const shuffled = [...allClues].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(count, allClues.length));
+  }
+  
+  /**
+   * 获取指定故事的所有线索
+   * 
+   * @param storyId 故事ID
+   * @returns 所有线索
+   */
+  static getAllClues(storyId: string): NarrativeThread[] {
+    const allClues = storyCluesMap[storyId];
+    
+    if (!allClues) {
+      console.warn(`[NarrativeService] No clues found for story: ${storyId}`);
+      return [];
+    }
+    
+    return [...allClues];
+  }
+  
+  /**
+   * 刷新线索（重新随机获取）
+   * 
+   * @param storyId 故事ID
+   * @param count 线索数量
+   * @returns 新的随机线索数组
+   */
+  static refreshClues(storyId: string, count: number): NarrativeThread[] {
+    return this.getRandomClues(storyId, count);
   }
 }

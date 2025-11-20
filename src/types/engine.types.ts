@@ -70,6 +70,9 @@ export interface GameState {
   /** 追踪的故事池（clue_id → TrackedStoryData） */
   trackedStories: Map<string, TrackedStoryData>;
   
+  /** 当前活跃故事的clue_id（null表示无活跃故事） */
+  activeStoryClueId: string | null;
+  
   // ========== 独立玩家状态（新增 Phase X）==========
   
   /** 
@@ -241,6 +244,8 @@ export type EngineEventType =
   | 'storyEntered'     // 进入故事（从线索启动）
   | 'storyExited'      // 退出故事（返回空闲）
   | 'playerStatusChanged'  // 玩家状态变化
+  // 线索状态事件（新增）
+  | 'clueInboxUpdated'   // 线索收件箱状态变化（统一的线索状态更新事件）
   // 近场交互事件
   | 'nearfieldUpdated'           // 近场状态更新（新简化版）
   | 'nearfield_scene_loaded'     // 近场场景加载完成

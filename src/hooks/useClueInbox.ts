@@ -95,35 +95,9 @@ export function useClueInbox(playerId: string = 'demo-player') {
     }
   }, [playerId]);
   
-  /**
-   * 🔥 追踪线索
-   */
-  const trackClue = useCallback(async (clueId: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // 1. 调用ClueService追踪线索（创建故事实例）
-      const storyInstanceId = await ClueService.trackClue(playerId, clueId); // ✅ 修复：添加 await
-      
-      // 2. 启动故事
-      StoryService.startStory(storyInstanceId);
-      
-      // 3. 重新加载数据
-      await loadClues();
-      
-      console.log('[useClueInbox] ✅ Tracked clue:', clueId, '→', storyInstanceId);
-      
-      return storyInstanceId;
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : '追踪失败';
-      setError(errorMsg);
-      console.error('[useClueInbox] ❌ Failed to track:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [playerId, loadClues]);
+  // ✅ 阶段3修复：删除trackClue方法（冗余调用路径）
+  // trackClue应该通过GameEngine调用以触发事件系统
+  // ClueInboxPanel现在直接使用useGameEngine.trackClue()
   
   /**
    * 🔥 标记线索为已读
@@ -171,7 +145,6 @@ export function useClueInbox(playerId: string = 'demo-player') {
     stats,
     // 方法
     loadClues,
-    trackClue,
     markAsRead,
     completeClue,
     getStoryInstance

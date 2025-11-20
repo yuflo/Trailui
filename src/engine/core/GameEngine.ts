@@ -18,7 +18,7 @@ import type {
   TrackedStoryData,
   ClueStatus,
   IClueService,
-  IPlayerService,
+  // IPlayerService, // ⚠️ Phase 1 完成：playerService 已迁移，移除类型引用
 } from '../../types';
 import { ServiceContainer } from '../services/ServiceContainer';
 import { DataAccessFactory } from '../data-access/DataAccessFactory';
@@ -30,8 +30,11 @@ import { StatSystem } from '../systems/StatSystem';
 import { RapportSystem } from '../systems/RapportSystem';
 import { BehaviorSystem } from '../systems/BehaviorSystem'; // 🔥 添加回来
 import { TickerSystem } from '../systems/TickerSystem'; // 🔥 添加回来
-import { CacheManager } from '../cache/CacheManager'; // 🔥 添加回来
 import { InstanceCacheManager } from '../cache/InstanceCacheManager'; // 🔥 新增：访问新架构数据
+import { TickerServiceAdapter } from '../services/business/TickerService'; // 🔥 新增：使用 business 层
+import { NarrativeService } from '../services/business/NarrativeService'; // 🔥 新增：使用 business 层
+import { StoryService } from '../services/business/StoryService'; // 🔥 Phase 2：使用 business 层 StoryService
+import { ClueService } from '../services/business/ClueService'; // 🔥 Phase 3：使用 business 层 ClueService
 
 /**
  * 游戏引擎类
@@ -59,11 +62,8 @@ export class GameEngine {
    */
   private clueService: IClueService;
   
-  /**
-   * 玩家服务引用（快速访问）
-   * @note 用于独立玩家状态管理
-   */
-  private playerService: IPlayerService;
+  // ⚠️ Phase 1 完成：playerService 已迁移到 InstanceCacheManager，移除此引用
+  // private playerService: IPlayerService;
   
   // 事件系统
   private eventListeners: Map<EngineEventType, EventListener[]> = new Map();
@@ -75,27 +75,28 @@ export class GameEngine {
       tickerUpdateInterval: config?.tickerUpdateInterval || 8000,
     };
     
+    // ========== Phase 6.1: 使用 StateManager 单例 ==========
+    this.stateManager = StateManager.getInstance();
+    
     // 初始化服务容器
     this.serviceContainer = ServiceContainer.getInstance();
-    
-    // 初始化核心组件
-    this.stateManager = new StateManager();
     
     // ✅ 在创建 StateManager 后，立即初始化 ClueService
     this.serviceContainer.initializeClueService(this.stateManager);
     
     // ========== Phase 4：初始化 Service 引用 ==========
     this.clueService = this.serviceContainer.getClueService();
-    this.playerService = this.serviceContainer.getPlayerService();
+    // ⚠️ Phase 1 完成：playerService 已迁移到 InstanceCacheManager，移除此引用
+    // this.playerService = this.serviceContainer.getPlayerService();
     
     // 初始化子系统
     this.statSystem = new StatSystem();
     this.rapportSystem = new RapportSystem();
     this.behaviorSystem = new BehaviorSystem(); // 🔥 添加回来
     this.tickerSystem = new TickerSystem(
-      this.serviceContainer.getTickerService(),
+      new TickerServiceAdapter(),
       { updateInterval: this.config.tickerUpdateInterval }
-    ); // 🔥 修复：正确初始化 TickerSystem
+    ); // 🔥 使用 business 层 TickerServiceAdapter
     
     // ✅ 创建StoryDataAccess实例用于TurnManager
     const storyDataAccess = DataAccessFactory.createStoryDataAccess();
@@ -153,32 +154,31 @@ export class GameEngine {
         related_scenes: clue.related_scenes
       }));
       
-      CacheManager.initialize({
-        clues: clueStaticData
-      });
+      // ❌ 删除 CacheManager 初始化
+      // 静态数据直接从 DataAccessFactory 获取，不需要预加载到缓存
       
-      console.log('[GameEngine] CacheManager initialized with clue registry');
+      console.log('[GameEngine] ✅ Clue data available via DataAccessFactory');
     } catch (error) {
-      console.error('[GameEngine] Failed to initialize CacheManager:', error);
+      console.error('[GameEngine] Failed to initialize clue data access:', error);
       // 不阻塞引擎初始化，允许继续
     }
     
     // ========== Phase X：初始化独立玩家状态 ==========
     try {
-      await this.playerService.initialize();
-      const playerStatus = this.playerService.getStatus();
+      // ✅ 使用 InstanceCacheManager 管理玩家状态（不再使用 PlayerServiceImpl）
+      await InstanceCacheManager.initializePlayer();
+      const playerStatus = InstanceCacheManager.getPlayerStatus();
       this.stateManager.setPlayerStatus(playerStatus);
-      console.log('[GameEngine] Player service initialized');
+      console.log('[GameEngine] Player initialized via InstanceCacheManager');
     } catch (error) {
-      console.error('[GameEngine] Failed to initialize player service:', error);
+      console.error('[GameEngine] Failed to initialize player:', error);
       // 不阻塞引擎初始化，允许继续
     }
     
     // ========== 注册叙事线索数据（Demo） ==========
     try {
       const { demoStoryNarrativeClues } = await import('../../data/hong-kong/narrative-clues');
-      const narrativeClueService = this.serviceContainer.getNarrativeClueService();
-      narrativeClueService.registerStoryClues('demo-story', demoStoryNarrativeClues);
+      NarrativeService.registerStoryClues('demo-story', demoStoryNarrativeClues);
       console.log('[GameEngine] Registered narrative clues for demo-story');
     } catch (error) {
       console.error('[GameEngine] Failed to register narrative clues:', error);
@@ -199,9 +199,8 @@ export class GameEngine {
    */
   async getAllStories(): Promise<StoryConfig[]> {
     try {
-      const stories = await this.serviceContainer
-        .getStoryService()
-        .getAllStories();
+      // ✅ Phase 2: 直接调用 StoryService 静态方法
+      const stories = await StoryService.getAllStories();
       
       this.emit('storyLoaded', { storyId: 'all', config: null });
       
@@ -217,14 +216,12 @@ export class GameEngine {
    */
   async startGame(storyId: string): Promise<GameState> {
     try {
-      // 1. 加载故事数据
-      const { config, scenarios } = await this.serviceContainer
-        .getStoryService()
-        .getStoryData(storyId);
+      // ✅ Phase 2: 直接调用 StoryService 静态方法
+      const { config, scenarios } = await StoryService.getStoryData(storyId);
       
       this.emit('storyLoaded', { storyId, config });
       
-      // 2. 初始化状态
+      // 2. 始化状态
       this.stateManager.initStory(storyId, config, scenarios);
       this.stateManager.startGame();
       
@@ -479,7 +476,7 @@ export class GameEngine {
   async handleIntervention(intentText: string): Promise<TurnResult> {
     const state = this.stateManager.getInternalState();
     
-    // ========== 优先检查：NearFieldManagerSimple（新简化版）==========
+    // ========== 优先检查NearFieldManagerSimple（新简化版）==========
     if (this.nearFieldManagerSimple.isActive()) {
       console.log('[GameEngine] Delegating intervention to NearFieldManagerSimple');
       await this.nearFieldManagerSimple.handleIntervention(intentText);
@@ -741,7 +738,20 @@ export class GameEngine {
    * @param clueId 线索ID
    */
   async extractClue(messageId: string, clueId: string) {
-    return await this.clueService.extractClue(messageId, clueId);
+    // 1. 调用 Service 提取线索
+    const clue = await this.clueService.extractClue(messageId, clueId);
+    
+    // 2. 发射事件（通知 useGameEngine 更新 extractedClues）
+    this.emit('clueInboxUpdated', { 
+      clue,
+      clueId: clue.clue_id 
+    });
+    
+    if (this.config.debug) {
+      console.log('[GameEngine] Clue extracted:', clue.title);
+    }
+    
+    return clue;
   }
   
   /**
@@ -773,11 +783,20 @@ export class GameEngine {
       // 更新 StateManager
       this.stateManager.updateTrackedStories(trackedStoriesMap);
       
-      // 3. 发射事件
+      // 3. 🔥 触发 clueInboxUpdated 事件（线索状态从unread/read变为tracking）
+      console.log('[GameEngine.trackClue] 🔥 Emitting clueInboxUpdated event for clue:', clueId);
+      this.emit('clueInboxUpdated', { 
+        clue: null,
+        clueId 
+      });
+      
+      // 4. 触发 storyTracked 事件（更新trackedStories池）
+      console.log('[GameEngine.trackClue] 🔥 About to emit storyTracked event for clue:', clueId);
       this.emit('storyTracked', { 
         trackedStory,
         clueId 
       });
+      console.log('[GameEngine.trackClue] ✅ Both events emitted');
       
       if (this.config.debug) {
         console.log('[GameEngine] Story tracked:', trackedStory.title);
@@ -836,6 +855,18 @@ export class GameEngine {
         });
       }
       
+      // 🔥 Phase 6.1 修复：如果故事还未启动，先启动它
+      if (storyInstance.status === 'not_started') {
+        console.log('[GameEngine] 🎬 Story not started yet, calling StoryService.startStory()...');
+        StoryService.startStory(clueRecord.story_instance_id);
+        // 重新获取更新后的实例
+        const updatedInstance = InstanceCacheManager.getStoryInstance(clueRecord.story_instance_id);
+        if (updatedInstance) {
+          // 使用更新后的实例继续
+          console.log('[GameEngine] ✅ Story started, status:', updatedInstance.status);
+        }
+      }
+      
       // ========== 🔥 Step 2: 转换为 TrackedStoryData 格式（兼容旧接口）==========
       // ✅ 修复：需要将 StoryInstance.scene_sequence (string[]) 转换为 SceneSequenceItem[]
       const sceneSequence: import('../../types').SceneSequenceItem[] = storyInstance.scene_sequence.map((sceneId, index) => ({
@@ -862,13 +893,37 @@ export class GameEngine {
       
       // ========== 🔥 Step 2.5: 先同步到 StateManager（必须在 setActiveStory 之前）==========
       // 原因：setActiveStory 内部会查询 StateManager，必须先把数据写入
+      
+      // 🔍 验证日志：进入故事前的状态
+      const existingStories = this.stateManager.getTrackedStories();
+      console.log('[GameEngine.enterStory] 🔍 BEFORE updateTrackedStories:');
+      console.log(`  - Existing tracked stories: ${existingStories.length}`);
+      console.log(`  - Story IDs: [${existingStories.map(s => s.entry_clue_id).join(', ')}]`);
+      console.log(`  - About to enter story for clue: ${clueId}`);
+      
+      // ✅ 修复：合并现有故事 + 当前故事，而不是覆盖
       const trackedStoriesMap = new Map<string, TrackedStoryData>();
+      
+      // 1. 先添加所有现有的追踪故事
+      existingStories.forEach(story => {
+        trackedStoriesMap.set(story.entry_clue_id, story);
+      });
+      
+      // 2. 再添加/更新当前故事（如果已存在则覆盖）
       trackedStoriesMap.set(clueId, trackedStory);
+      
+      console.log('[GameEngine.enterStory] 🔥 MERGED MAP:');
+      console.log(`  - Map size: ${trackedStoriesMap.size}`);
+      console.log(`  - Map keys: [${Array.from(trackedStoriesMap.keys()).join(', ')}]`);
+      console.log(`  - ✅ Merged ${existingStories.length} existing + 1 current story`);
+      
       this.stateManager.updateTrackedStories(trackedStoriesMap);
       
-      if (this.config.debug) {
-        console.log('[GameEngine] 📝 Synced TrackedStoryData to StateManager before setActiveStory');
-      }
+      // 🔍 验证日志：更新后的状态
+      const afterStories = this.stateManager.getTrackedStories();
+      console.log('[GameEngine.enterStory] 🔍 AFTER updateTrackedStories:');
+      console.log(`  - Tracked stories now: ${afterStories.length}`);
+      console.log(`  - Story IDs now: [${afterStories.map(s => s.entry_clue_id).join(', ')}]`);
       
       // 2. 设置为活跃故事（Service 层）
       await this.clueService.setActiveStory(clueId);
@@ -947,7 +1002,7 @@ export class GameEngine {
       // 3. 清除行为历史
       this.behaviorSystem.clearHistory();
       
-      // 4. 发射事件
+      // 4. 发射事
       this.emit('storyExited', { 
         sessionState: this.stateManager.getSessionState() 
       });
@@ -1045,9 +1100,9 @@ export class GameEngine {
    * @param delta 变化量（可为负数）
    */
   updatePlayerVigor(delta: number): void {
-    this.playerService.updateVigor(delta);
+    InstanceCacheManager.updateVigor(delta);
     // 同步到 StateManager
-    const updatedStatus = this.playerService.getStatus();
+    const updatedStatus = InstanceCacheManager.getPlayerStatus();
     this.stateManager.updatePlayerStatus(updatedStatus);
     
     // 发射事件
@@ -1064,9 +1119,9 @@ export class GameEngine {
    * @param delta 变化量（可为负数）
    */
   updatePlayerClarity(delta: number): void {
-    this.playerService.updateClarity(delta);
+    InstanceCacheManager.updateClarity(delta);
     // 同步到 StateManager
-    const updatedStatus = this.playerService.getStatus();
+    const updatedStatus = InstanceCacheManager.getPlayerStatus();
     this.stateManager.updatePlayerStatus(updatedStatus);
     
     // 发射事件
@@ -1083,9 +1138,9 @@ export class GameEngine {
    * @param location 新位置
    */
   updatePlayerLocation(location: string): void {
-    this.playerService.updateLocation(location);
+    InstanceCacheManager.updatePlayerLocation(location);
     // 同步到 StateManager
-    const updatedStatus = this.playerService.getStatus();
+    const updatedStatus = InstanceCacheManager.getPlayerStatus();
     this.stateManager.updatePlayerStatus(updatedStatus);
     
     // 发射事件
@@ -1101,9 +1156,9 @@ export class GameEngine {
    * @param time 新时间
    */
   updatePlayerTime(time: string): void {
-    this.playerService.updateTime(time);
+    InstanceCacheManager.updateWorldTime(time);
     // 同步到 StateManager
-    const updatedStatus = this.playerService.getStatus();
+    const updatedStatus = InstanceCacheManager.getPlayerStatus();
     this.stateManager.updatePlayerStatus(updatedStatus);
     
     // 发射事件
@@ -1126,11 +1181,11 @@ export class GameEngine {
       return;
     }
     
-    this.playerService.syncFromScenario(scenario);
-    const updatedStatus = this.playerService.getStatus();
+    InstanceCacheManager.syncPlayerFromScenario(scenario);
+    const updatedStatus = InstanceCacheManager.getPlayerStatus();
     this.stateManager.updatePlayerStatus(updatedStatus);
     
-    console.log('[GameEngine] Player status synced from scenario');
+    console.log('[GameEngine] Player status synced from scenario via InstanceCacheManager');
   }
   
   /**
@@ -1200,7 +1255,7 @@ export class GameEngine {
     await this.clueService.markSceneCompleted(clueId, event.data.fromSceneId);
     
     const afterMarkComplete = this.stateManager.getTrackedStory(clueId);
-    console.log('[GameEngine] 📊 AFTER markSceneCompleted:', {
+    console.log('[GameEngine] AFTER markSceneCompleted:', {
       completedScenes: afterMarkComplete?.progress?.completed_scenes,
       sceneSequence: afterMarkComplete?.scene_sequence.map((s, i) => ({
         index: i,
@@ -1208,6 +1263,14 @@ export class GameEngine {
         status: s.status
       }))
     });
+    
+    // 2.5. ✅ 更新 StoryInstance 的 current_scene_id（进入下一个场景）
+    const clueRecord = InstanceCacheManager.getClueRecord(clueId);
+    if (clueRecord?.story_instance_id && event.data.toSceneId) {
+      console.log(`[GameEngine] 🔄 Step 1.5: Entering next scene in StoryInstance: ${event.data.toSceneId}`);
+      StoryService.enterScene(clueRecord.story_instance_id, event.data.toSceneId);
+      console.log(`[GameEngine] ✅ StoryInstance.current_scene_id updated to next scene`);
+    }
     
     // 3. 更新当前场景索引（直接通过 StateManager）
     const trackedData = this.stateManager.getTrackedStory(clueId);
@@ -1228,6 +1291,9 @@ export class GameEngine {
         console.log('[GameEngine] 📊 AFTER updateTrackedStory (index):', {
           currentSceneIndex: afterIndexUpdate?.progress?.current_scene_index
         });
+        
+        // ✅ 现在 InstanceCacheManager 已在 StoryService.enterScene() 中同步更新
+        // 无需在这里重复更新（符合分层架构）
       }
     }
     
@@ -1304,13 +1370,21 @@ export class GameEngine {
     // 2. ✅ 通过 ClueService 标记故事完成（统一数据源）
     await this.clueService.markStoryCompleted(clueId, event.data.completionClueId);
     
-    // 3. 触发更新事件
+    // 3. 🔥 触发 clueInboxUpdated 事件，让 useGameEngine 重新加载 extractedClues
+    //    这样 Badge 的 completedCount 才能正确更新
+    this.emit('clueInboxUpdated', {
+      clue: null, // 不需要完整 clue 对象，useGameEngine 会重新加载所有线索
+      clueId
+    });
+    console.log('[GameEngine] 🔥 Emitted clueInboxUpdated event to update Badge status');
+    
+    // 4. 触发 trackedStories 更新事件
     const state = this.stateManager.getInternalState();
     this.emit('trackedStoriesUpdated', {
       trackedStories: state.trackedStories
     });
     
-    // 4. 获取更新后的故事数据用于显示提示
+    // 5. 获取更新后的故事数据用于显示提示
     const trackedData = this.stateManager.getTrackedStory(clueId);
     if (trackedData) {
       // 显示完成提示

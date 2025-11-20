@@ -17,9 +17,12 @@ import type {
   NPCInstance,
   ClueRecord,
   LLMSceneNarrativeRecord,
-  LLMDialogueRecord
+  LLMDialogueRecord,
+  PlayerStatusArea,
+  StatusEffect
 } from '../../types/instance.types';
 import type { StoryConfig } from '../../types'; // 🔥 导入完整的 StoryConfig 类型
+import { DataAccessFactory } from '../data-access/DataAccessFactory';
 
 /**
  * 本地存储键
@@ -57,6 +60,9 @@ export class InstanceCacheManager {
    * 初始化实例缓存管理器
    */
   static initialize(): void {
+    console.log('[InstanceCacheManager.initialize] 🚀 initialize() called, current initialized status:', this.initialized);
+    console.log('[InstanceCacheManager.initialize] 📊 Current clueRecords size BEFORE:', this.clueRecords.size);
+    
     if (this.initialized) {
       console.log('[InstanceCacheManager] Already initialized');
       return;
@@ -69,6 +75,7 @@ export class InstanceCacheManager {
     console.log(`  - Story instances: ${this.storyInstances.size}`);
     console.log(`  - Scene instances: ${this.sceneInstances.size}`);
     console.log(`  - NPC instances: ${this.npcInstances.size}`);
+    console.log(`  - Clue records: ${this.clueRecords.size}`);
   }
   
   // ============================================
@@ -498,6 +505,24 @@ export class InstanceCacheManager {
     return JSON.parse(JSON.stringify(records));
   }
   
+  /**
+   * 🔥 删除线索记录
+   */
+  static deleteClueRecord(clueId: string): void {
+    const existed = this.clueRecords.has(clueId);
+    this.clueRecords.delete(clueId);
+    
+    if (existed) {
+      this.saveToLocalStorage();
+      console.log(`[InstanceCacheManager] ✅ Deleted clue record: ${clueId}`);
+    } else {
+      // 降低日志级别：删除不存在的记录不是错误，只是清理操作
+      if (this.initialized) {
+        console.log(`[InstanceCacheManager] ℹ️ Clue record not found (already clean): ${clueId}`);
+      }
+    }
+  }
+  
   // ============================================
   // LLM生成内容管理
   // ============================================
@@ -561,10 +586,20 @@ export class InstanceCacheManager {
         npcInstances: Array.from(this.npcInstances.entries()),
         clueRecords: Array.from(this.clueRecords.entries()),
         llmSceneNarratives: Array.from(this.llmSceneNarratives.entries()),
-        llmDialogueHistory: Array.from(this.llmDialogueHistory.entries())
+        llmDialogueHistory: Array.from(this.llmDialogueHistory.entries()),
+        playerStatus: this.playerStatus
       };
       
+      console.log('[InstanceCacheManager.saveToLocalStorage] 💾 SAVING @ ' + Date.now());
+      console.log('[InstanceCacheManager.saveToLocalStorage] 📊 Data being saved:', {
+        clueRecordsCount: state.clueRecords.length,
+        clueIds: state.clueRecords.map(([id]) => id),
+        clueStatuses: state.clueRecords.map(([id, record]) => ({ id, status: record.status, story_instance_id: record.story_instance_id })),
+        storyInstancesCount: state.storyInstances.length
+      });
+      
       localStorage.setItem(INSTANCE_STORAGE_KEY, JSON.stringify(state));
+      console.log('[InstanceCacheManager.saveToLocalStorage] ✅ Saved successfully');
       // console.log('[InstanceCacheManager] ✅ Saved to localStorage');
     } catch (error) {
       console.error('[InstanceCacheManager] ❌ Failed to save:', error);
@@ -575,10 +610,23 @@ export class InstanceCacheManager {
    * 从localStorage加载
    */
   private static loadFromLocalStorage(): void {
+    console.log('[InstanceCacheManager.loadFromLocalStorage] 🔥 LOADING FROM LOCALSTORAGE @ ' + Date.now());
+    console.log('[InstanceCacheManager.loadFromLocalStorage] 📍 Call stack:', new Error().stack);
+    console.log('[InstanceCacheManager.loadFromLocalStorage] 📊 Current Map size BEFORE load:', {
+      clueRecords: this.clueRecords.size,
+      storyInstances: this.storyInstances.size
+    });
+    
     try {
       const saved = localStorage.getItem(INSTANCE_STORAGE_KEY);
       if (saved) {
         const state = JSON.parse(saved);
+        
+        console.log('[InstanceCacheManager.loadFromLocalStorage] 📦 Data from localStorage:', {
+          clueRecordsCount: state.clueRecords?.length || 0,
+          clueIds: (state.clueRecords || []).map((r: any) => r[0]),
+          storyInstancesCount: state.storyInstances?.length || 0
+        });
         
         this.storyInstances = new Map(state.storyInstances || []);
         this.sceneInstances = new Map(state.sceneInstances || []);
@@ -586,8 +634,15 @@ export class InstanceCacheManager {
         this.clueRecords = new Map(state.clueRecords || []);
         this.llmSceneNarratives = new Map(state.llmSceneNarratives || []);
         this.llmDialogueHistory = new Map(state.llmDialogueHistory || []);
+        this.playerStatus = state.playerStatus || null;
         
-        console.log('[InstanceCacheManager] ✅ Loaded from localStorage');
+        console.log('[InstanceCacheManager.loadFromLocalStorage] ✅ Loaded from localStorage');
+        console.log('[InstanceCacheManager.loadFromLocalStorage] 📊 Map size AFTER load:', {
+          clueRecords: this.clueRecords.size,
+          storyInstances: this.storyInstances.size
+        });
+      } else {
+        console.log('[InstanceCacheManager.loadFromLocalStorage] ⚠️ No saved data in localStorage');
       }
     } catch (error) {
       console.error('[InstanceCacheManager] ❌ Failed to load:', error);
@@ -630,9 +685,293 @@ export class InstanceCacheManager {
       llmDialogues: this.llmDialogueHistory.size
     };
   }
-}
-
-// 自动初始化
-if (typeof window !== 'undefined') {
-  InstanceCacheManager.initialize();
+  
+  // ============================================
+  // 玩家状态管理（从 PlayerServiceImpl 迁移）
+  // ============================================
+  
+  private static playerStatus: PlayerStatusArea | null = null;
+  
+  /**
+   * 初始化玩家状态
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static async initializePlayer(saveId?: string): Promise<void> {
+    if (this.playerStatus) {
+      console.log('[InstanceCacheManager] Player already initialized, skipping');
+      return;
+    }
+    
+    const playerDataAccess = DataAccessFactory.createPlayerDataAccess();
+    
+    try {
+      this.playerStatus = await playerDataAccess.loadStatus(saveId);
+      console.log('[InstanceCacheManager] Player initialized:', {
+        location: this.playerStatus.current_location,
+        vigor: `${this.playerStatus.vigor.value}/${this.playerStatus.vigor.max}`,
+        clarity: `${this.playerStatus.clarity.value}/${this.playerStatus.clarity.max}`
+      });
+    } catch (error) {
+      console.error('[InstanceCacheManager] Failed to initialize player:', error);
+      // Fallback: 使用默认状态
+      this.playerStatus = await playerDataAccess.getDefaultStatus();
+    }
+    
+    this.saveToLocalStorage();
+  }
+  
+  /**
+   * 获取玩家状态（只读）
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static getPlayerStatus(): Readonly<PlayerStatusArea> {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized. Call initializePlayer() first.');
+    }
+    
+    // 返回深拷贝，防止外部修改
+    return JSON.parse(JSON.stringify(this.playerStatus));
+  }
+  
+  /**
+   * 更新体力
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updateVigor(delta: number): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    const newValue = Math.max(
+      0,
+      Math.min(
+        this.playerStatus.vigor.max,
+        this.playerStatus.vigor.value + delta
+      )
+    );
+    
+    this.playerStatus.vigor.value = newValue;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Vigor updated: ${delta > 0 ? '+' : ''}${delta} → ${newValue}`);
+  }
+  
+  /**
+   * 更新心力
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updateClarity(delta: number): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    const newValue = Math.max(
+      0,
+      Math.min(
+        this.playerStatus.clarity.max,
+        this.playerStatus.clarity.value + delta
+      )
+    );
+    
+    this.playerStatus.clarity.value = newValue;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Clarity updated: ${delta > 0 ? '+' : ''}${delta} → ${newValue}`);
+  }
+  
+  /**
+   * 设置体力最大值
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static setVigorMax(max: number): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    this.playerStatus.vigor.max = Math.max(1, max);
+    // 当前值不超过新最大值
+    this.playerStatus.vigor.value = Math.min(
+      this.playerStatus.vigor.value,
+      max
+    );
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Vigor max set to: ${max}`);
+  }
+  
+  /**
+   * 设置心力最大值
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static setClarityMax(max: number): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    this.playerStatus.clarity.max = Math.max(1, max);
+    // 当前值不超过新最大值
+    this.playerStatus.clarity.value = Math.min(
+      this.playerStatus.clarity.value,
+      max
+    );
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Clarity max set to: ${max}`);
+  }
+  
+  /**
+   * 更新当前位置
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updatePlayerLocation(location: string): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    this.playerStatus.current_location = location;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Location updated: ${location}`);
+  }
+  
+  /**
+   * 更新游戏时间
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updateWorldTime(time: string): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    this.playerStatus.world_time = time;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Time updated: ${time}`);
+  }
+  
+  /**
+   * 更新财力等级
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updateFinancialPower(level: string): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    this.playerStatus.financial_power = level as any;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Financial power updated: ${level}`);
+  }
+  
+  /**
+   * 更新信用值
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static updateCredit(delta: number): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    const newValue = Math.max(
+      0,
+      Math.min(
+        100,
+        this.playerStatus.credit.value + delta
+      )
+    );
+    
+    this.playerStatus.credit.value = newValue;
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Credit updated: ${delta > 0 ? '+' : ''}${delta} → ${newValue}`);
+  }
+  
+  /**
+   * 添加状态效果
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static addPlayerEffect(effect: StatusEffect): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    // 移除同名效果（如果存在）
+    this.removePlayerEffect(effect.name);
+    
+    // 添加新效果
+    this.playerStatus.active_effects.push({ ...effect });
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Effect added: ${effect.name}`);
+  }
+  
+  /**
+   * 移除状态效果
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static removePlayerEffect(effectName: string): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    const index = this.playerStatus.active_effects.findIndex(
+      e => e.name === effectName
+    );
+    
+    if (index !== -1) {
+      this.playerStatus.active_effects.splice(index, 1);
+      this.saveToLocalStorage();
+      console.log(`[InstanceCacheManager] Effect removed: ${effectName}`);
+    }
+  }
+  
+  /**
+   * 清除所有状态效果
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static clearPlayerEffects(): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    const count = this.playerStatus.active_effects.length;
+    this.playerStatus.active_effects = [];
+    this.saveToLocalStorage();
+    
+    console.log(`[InstanceCacheManager] Cleared ${count} effects`);
+  }
+  
+  /**
+   * 检查是否有指定效果
+   * 🔥 从 PlayerServiceImpl 迁移
+   */
+  static hasPlayerEffect(effectName: string): boolean {
+    if (!this.playerStatus) {
+      return false;
+    }
+    return this.playerStatus.active_effects.some(e => e.name === effectName);
+  }
+  
+  /**
+   * 从场景快照同步玩家状态
+   * 🔥 从 PlayerServiceImpl 迁移
+   * @note 进入故事时调用
+   */
+  static syncPlayerFromScenario(scenario: { player_status_area: PlayerStatusArea }): void {
+    if (!this.playerStatus) {
+      throw new Error('[InstanceCacheManager] Player not initialized');
+    }
+    
+    // 深拷贝场景中的玩家状态
+    this.playerStatus = JSON.parse(
+      JSON.stringify(scenario.player_status_area)
+    );
+    this.saveToLocalStorage();
+    
+    console.log('[InstanceCacheManager] Synced player from scenario:', {
+      location: this.playerStatus.current_location,
+      time: this.playerStatus.world_time
+    });
+  }
 }

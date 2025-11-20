@@ -110,14 +110,15 @@ export interface TickerMessageData {
  * 广播消息数据（远场探索）
  * 
  * 符合远场探索API规范的完整消息结构
+ * ✅ GTA标准4种类型：ALERT | RUMOR | SOCIAL | TRADE
  */
 export interface BroadcastMessageData {
-  message_id: string;              // 消息唯一ID
-  category: string;                 // 类别（社交/媒体/警讯等）
-  timestamp: string;                // 时间戳（如 "23:41"）
-  text: string;                     // 消息文本
-  color: string;                    // UI显示颜色（兼容旧UI）
-  extractable_clue_id: string | null;  // 可提取的线索ID
+  message_id: string;                          // 消息唯一ID
+  category: 'ALERT' | 'RUMOR' | 'SOCIAL' | 'TRADE';  // ✅ GTA标准类型（严格限定）
+  timestamp: string;                            // 时间戳（如 "23:41"）
+  text: string;                                 // 消息文本
+  color?: string;                               // ✅ 可选：UI显示颜色（组件自动配色，兼容旧UI）
+  extractable_clue_id: string | null;           // 可提取的线索ID
 }
 
 /**
@@ -163,14 +164,18 @@ export interface ITickerService {
   resetCycle(): void;
 }
 
+/*
 // ==================== Narrative Clue Service ====================
+// 🗑️ 已废弃 - Phase 3
+// 原因：NarrativeClueServiceImpl 已删除，使用 business/NarrativeService 替代
+// 删除时间：2025-11-12
 
 /**
  * 叙事线索服务接口
  * 
  * 提供叙事线索的管理和随机获取功能
  * 线索与故事绑定，每个故事有独立的线索池
- */
+ * /
 export interface INarrativeClueService {
   /**
    * 获取指定故事的随机线索
@@ -178,14 +183,14 @@ export interface INarrativeClueService {
    * @param count 线索数量
    * @returns 叙事线索数组
    * @note Demo功能：从该故事的线索池中随机抽取
-   */
+   * /
   getRandomClues(storyId: string, count: number): NarrativeThread[];
   
   /**
    * 获取指定故事的所有线索
    * @param storyId 故事ID
    * @returns 所有叙事线索
-   */
+   * /
   getAllClues(storyId: string): NarrativeThread[];
   
   /**
@@ -194,7 +199,7 @@ export interface INarrativeClueService {
    * @param count 线索数量
    * @returns 新的叙事线索数组
    * @note Demo功能：用于定时刷新线索面板
-   */
+   * /
   refreshClues(storyId: string, count: number): NarrativeThread[];
   
   /**
@@ -202,7 +207,7 @@ export interface INarrativeClueService {
    * @param clueId 触发该故事的线索ID
    * @param sceneId 已完成的场景ID
    * @param completionClueId 可选：完成时解锁的线索ID
-   */
+   * /
   markSceneCompleted(
     clueId: string, 
     sceneId: string,
@@ -213,61 +218,67 @@ export interface INarrativeClueService {
    * 🆕 标记故事为已完成
    * @param clueId 触发该故事的线索ID
    * @param completionClueId 可选：完成时解锁的线索ID
-   */
+   * /
   markStoryCompleted(
     clueId: string,
     completionClueId?: string
   ): Promise<void>;
 }
+*/
 
+/*
 // ==================== Freedom Mirror Service ====================
+// 🗑️ 已废弃 - Phase 3
+// 原因：FreedomMirrorServiceImpl 已删除（Phase 2），功能集成到 GameEngine
+// 删除时间：2025-11-12
 
 /**
  * 自由镜服务接口
  * 
  * 提供剧情消息流的播放管理功能
- * 用于"剧情/冲突"混合模式中的自动剧情播放
- */
+ * 用于\"剧情/冲突\"混合模式中的自动剧情播放
+ * /
 export interface IFreedomMirrorService {
   /**
    * 加载指定故事的场景剧本
    * @param storyId 故事ID
    * @returns 场景剧本数据
-   */
+   * /
   loadScenePlot(storyId: string): ScenePlot;
   
   /**
    * 获取下一个剧本单元（循环播放）
    * @returns 下一个剧本单元，如果没有则返回null
    * @note Demo功能：按顺序返回剧本单元，播放完毕后循环重播
-   */
+   * /
   getNextPlotUnit(): PlotUnit | null;
   
   /**
    * 检查是否还有更多剧本单元
    * @returns 是否还有未播放的单元
-   */
+   * /
   hasMore(): boolean;
   
   /**
    * 重置播放位置到开头
    * @note Demo功能：将播放位置重置，用于重新播放或切换故事
-   */
+   * /
   resetPlayback(): void;
   
   /**
    * 设置循环模式
    * @param loop 是否启用循环播放
    * @note Demo功能：控制播放完毕后是否自动重新开始
-   */
+   * /
   setLoopMode(loop: boolean): void;
   
   /**
    * 获取当前播放进度
    * @returns 当前索引和总数
-   */
+   * /
   getPlaybackProgress(): { current: number; total: number };
 }
+*/
 
 // ==================== Clue Service ====================
 
@@ -275,7 +286,7 @@ export interface IFreedomMirrorService {
  * 线索状态
  */
 export type ClueStatus = 
-  | 'untracked'   // 未追踪（在收件箱中）
+  | 'untracked'   // 未追踪（���收件箱中）
   | 'tracking'    // 追踪中（已开启故事）
   | 'completed';  // 已完成
 

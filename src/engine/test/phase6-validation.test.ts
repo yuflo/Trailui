@@ -13,6 +13,7 @@
 import { GameEngine } from '../core/GameEngine';
 import { ServiceContainer } from '../services/ServiceContainer';
 import { DataAccessFactory } from '../data-access/DataAccessFactory';
+import { StoryService } from '../services/business/StoryService';  // ✅ Phase 5: 使用 business 层
 import type { 
   IClueDataAccess, 
   IStoryDataAccess,
@@ -204,19 +205,18 @@ export async function runPhase6ValidationTests() {
 
   // Test 2.2: StoryService
   if (await runTest('Test 2.2: StoryService - getStoryById', async () => {
-    const storyService = serviceContainer.getStoryService();
+    // ✅ Phase 5: 直接使用 business 层的 StoryService
+    const storyData = await StoryService.getStoryData('demo-story');
     
-    const story = await storyService.getStoryById('demo-story');
-    
-    if (!story) {
+    if (!storyData) {
       throw new Error('Story not found');
     }
     
-    if (story.story_id !== 'demo-story') {
+    if (storyData.meta.story_id !== 'demo-story') {
       throw new Error('Wrong story returned');
     }
     
-    console.log('  ✓ StoryService.getStoryById() works');
+    console.log('  ✓ StoryService.getStoryData() works');
     console.log('  ✓ Uses StoryDataAccess internally');
   })) {
     passedTests++;
@@ -225,9 +225,11 @@ export async function runPhase6ValidationTests() {
 
   // Test 2.3: TickerService
   if (await runTest('Test 2.3: TickerService - getMessages', async () => {
-    const tickerService = serviceContainer.getTickerService();
+    // ✅ Phase 5: TickerService 通过 GameEngine 访问，不通过 ServiceContainer
+    const engine = new GameEngine({ debug: false });
+    await engine.initialize();
     
-    const messages = tickerService.getMessages();
+    const messages = engine.getTickerMessages();
     
     if (messages.length === 0) {
       throw new Error('No messages returned');

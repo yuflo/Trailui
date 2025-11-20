@@ -34,6 +34,7 @@ export type {
   BroadcastArea,
   Rapport,
   NPCEntity,
+  EnrichedNPCEntity, // 🔥 新增：丰富的 NPC 实体
   BehaviorItem,
   AvailablePlayerBehavior,
   NarrativeThread,
@@ -65,8 +66,8 @@ export type {
   ITickerService,
   TickerMessageData,
   BroadcastMessageData,
-  INarrativeClueService,
-  IFreedomMirrorService,
+  // INarrativeClueService,  // 🗑️ 已删除 - Phase 3
+  // IFreedomMirrorService,  // 🗑️ 已删除 - Phase 3
   IClueService,
   ClueStatus,
   ClueData,

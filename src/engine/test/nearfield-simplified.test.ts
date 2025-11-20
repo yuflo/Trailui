@@ -9,14 +9,15 @@ import { StateManager } from '../core/StateManager';
 import { GameEngine } from '../core/GameEngine';
 import type { PlotUnit } from '../../types';
 
-describe('NearFieldManagerSimple', () => {
+describe('NearField E2E Tests', () => {
   let engine: GameEngine;
-  let manager: NearFieldManagerSimple;
   let stateManager: StateManager;
+  let manager: NearFieldManagerSimple;
 
   beforeEach(() => {
     engine = new GameEngine({ debug: false });
-    stateManager = new StateManager();
+    // ========== Phase 6.1: 使用 StateManager 单例 ==========
+    stateManager = StateManager.getInstance();
     manager = new NearFieldManagerSimple(engine, stateManager);
   });
 

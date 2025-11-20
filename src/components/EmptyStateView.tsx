@@ -43,7 +43,10 @@ export function EmptyStateView({ sessionState, onOpenClueInbox }: EmptyStateView
       </p>
       <Button
         variant="outline"
-        className="border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10"
+        className="border-[3px] border-black bg-white hover:bg-gray-100 text-black"
+        style={{
+          boxShadow: '0 0 0 2px #A83C3C, 3px 3px 0 #000'
+        }}
         onClick={onOpenClueInbox}
       >
         <Inbox className="w-4 h-4 mr-2" />

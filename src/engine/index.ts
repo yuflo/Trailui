@@ -12,10 +12,7 @@ export { StatSystem, RapportSystem, BehaviorSystem, TickerSystem } from './syste
 export type { ExtendedBehaviorItem, TickerMessageWithIcon } from './systems';
 
 // 导出服务（如果需要单独使用）
-export { StoryServiceImpl, VisualServiceImpl, TickerServiceImpl } from './services';
+export { StoryServiceImpl, VisualServiceImpl } from './services';
 
 // 🔥 Phase 3: 导出新的Business Services
-export { ClueService, StoryService, NPCService, NarrativeService } from './services/business';
-
-// 🔥 Phase 3: 导出工具类
-export { ClueInitializer } from './utils/ClueInitializer';
+export { ClueService, StoryService, NPCService, NarrativeService, TickerService } from './services/business';

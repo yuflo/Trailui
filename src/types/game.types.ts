@@ -131,12 +131,35 @@ export interface Rapport {
 
 /**
  * NPC 实体
+ * 
+ * 🔥 升级说明：
+ * - 新增 avatar, role, bio 字段
+ * - 这些字段来自 NPC Registry（静态配置）
+ * - status_summary, composure, rapport 仍然是动态的（来自 Scenario）
  */
 export interface NPCEntity {
+  /** NPC 唯一标识符 */
   id: string;
+  
+  /** NPC 姓名 */
   name: string;
+  
+  /** 头像 URL（新增） */
+  avatar?: string;
+  
+  /** 职业/角色（新增） */
+  role?: string;
+  
+  /** 简短描述（新增） */
+  bio?: string;
+  
+  /** 当前状态描述（动态） */
   status_summary: string;
+  
+  /** 心防/稳定度（动态） */
   composure: string;
+  
+  /** 好感度（动态） */
   rapport: Rapport;
 }
 
@@ -212,6 +235,8 @@ export interface StatusEffect {
  * 玩家状态区域
  */
 export interface PlayerStatusArea {
+  name?: string;              // 玩家姓名
+  avatar?: string;            // 头像URL
   world_time: string;
   current_location: string;
   vigor: StatValue;           // 体力

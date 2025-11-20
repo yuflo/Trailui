@@ -20,6 +20,8 @@ import type { PlayerStatusArea } from '../../../types';
  * @note Mock数据 - Demo阶段使用，上线后从后端API获取
  */
 export const DEFAULT_PLAYER_STATUS: PlayerStatusArea = {
+  name: 'V',
+  avatar: 'https://images.unsplash.com/photo-1642522501650-ff7d99154e98?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjeWJlcnB1bmslMjBzdHJlZXQlMjBwZXJzb258ZW58MXx8fHwxNzYzNDgwMjAyfDA&ixlib=rb-4.1.0&q=80&w=1080',
   world_time: '23:45',
   current_location: '尖沙咀',
   vigor: {
@@ -50,6 +52,8 @@ export const DEFAULT_PLAYER_STATUS: PlayerStatusArea = {
 export const MOCK_PLAYER_SAVES = {
   // 满血满状态
   full: {
+    name: 'V',
+    avatar: 'https://images.unsplash.com/photo-1642522501650-ff7d99154e98?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjeWJlcnB1bmslMjBzdHJlZXQlMjBwZXJzb258ZW58MXx8fHwxNzYzNDgwMjAyfDA&ixlib=rb-4.1.0&q=80&w=1080',
     world_time: '12:00',
     current_location: '中环',
     vigor: { value: 100, max: 100 },

@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { 
   Inbox, 
   Target, 
@@ -17,7 +17,9 @@ import {
   Loader2,
   MapPin,
   TrendingUp,
-  Users
+  Users,
+  Play,
+  AlertCircle // 🔥 新增：提示图标
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
@@ -26,14 +28,18 @@ import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Progress } from './ui/progress';
 import { useClueInbox } from '../hooks/useClueInbox';
+// ❌ 移除：不再在这里调用 useGameEngine
+// import { useGameEngine } from '../hooks/useGameEngine';
 import type { ClueRecord, StoryInstance } from '../types/instance.types';
+import type { TrackedStoryData } from '../types'; // 🔥 新增：类型导入
 
 interface ClueInboxPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   playerId?: string;
-  onClueTracked?: () => void; // 🔥 新增：线索追踪成功后的回调，用于通知父组件刷新状态
-  onEnterStory?: (clueId: string) => void; // 🔥 新增：进入故事的回调
+  trackClue: (clueId: string) => Promise<any>; // 🔥 修复双实例：从App接收trackClue方法
+  onEnterStory?: (clueId: string) => void;
+  activeStory: TrackedStoryData | null; // 🔥 KISS方案1：从App接收activeStory
 }
 
 /**
@@ -43,23 +49,29 @@ export function ClueInboxPanel({
   open, 
   onOpenChange,
   playerId = 'demo-player',
-  onClueTracked, // 🔥 接收回调
-  onEnterStory // 🔥 接收进入故事回调
+  trackClue, // 🔥 修复双实例：从App接收trackClue方法
+  onEnterStory, // 🔥 接收进入故事回调
+  activeStory // 🔥 KISS方案1：从App接收activeStory
 }: ClueInboxPanelProps) {
+  console.log('[ClueInboxPanel] 🏗️ COMPONENT MOUNT/RENDER @ ' + Date.now());
+  console.log('[ClueInboxPanel] 📍 Component: ClueInboxPanel.tsx');
+  
   const [selectedClueIndex, setSelectedClueIndex] = useState(0);
   const [trackingClueId, setTrackingClueId] = useState<string | null>(null);
   
-  // 使用新的Hook
+  // 使用新的Hook（只用于数据加载和显示）
   const {
     clues,
     storyInstances,
     isLoading,
     error,
     stats,
-    trackClue,
     getStoryInstance,
     loadClues
   } = useClueInbox(playerId);
+  
+  // ❌ 移除：不再调用 useGameEngine
+  // const { activeStory } = useGameEngine();
   
   // 🔥 方案2：面板打开时自动刷新数据
   useEffect(() => {
@@ -76,15 +88,13 @@ export function ClueInboxPanel({
     setTrackingClueId(clueId);
     
     try {
+      // ✅ 使用 GameEngine 的 trackClue（触发事件系统）
       await trackClue(clueId);
-      console.log('[ClueInboxPanel] ✅ Successfully tracked clue:', clueId);
+      console.log('[ClueInboxPanel] ✅ Successfully tracked clue via GameEngine:', clueId);
       
-      // 🔥 调用回调通知父组件刷新状态
-      if (onClueTracked) {
-        console.log('[ClueInboxPanel] 📢 Calling onClueTracked callback...');
-        onClueTracked();
-        console.log('[ClueInboxPanel] ✅ onClueTracked callback completed');
-      }
+      // ✅ 手动刷新面板数据（因为useClueInbox不监听事件）
+      await loadClues();
+      console.log('[ClueInboxPanel] ✅ Panel data refreshed');
     } catch (error) {
       console.error('[ClueInboxPanel] ❌ Failed to track clue:', error);
     } finally {
@@ -112,14 +122,14 @@ export function ClueInboxPanel({
       };
     } else if (clue.status === 'read') {
       return {
-        color: 'bg-blue-500/20 text-blue-300 border-blue-500/50',
-        dotColor: 'bg-blue-400',
+        color: 'bg-white/90 text-black border-[3px] border-black',
+        dotColor: 'bg-[#64748b]',
         label: '已读'
       };
     } else {
       return {
-        color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50',
-        dotColor: 'bg-cyan-400',
+        color: 'bg-[#fbbf24]/20 text-black border-[3px] border-black',
+        dotColor: 'bg-[#fbbf24]',
         label: '未读'
       };
     }
@@ -131,11 +141,14 @@ export function ClueInboxPanel({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="w-[90vw] h-[85vh] max-w-7xl sm:max-w-7xl bg-gradient-to-br from-slate-900/98 to-slate-800/98 backdrop-blur-xl border-yellow-500/50 p-0 comic-outline halftone-bg overflow-hidden flex flex-col"
+        className="w-[90vw] h-[85vh] max-w-7xl sm:max-w-7xl bg-[#140f0f]/95 backdrop-blur-xl border-[3px] border-black p-0 overflow-hidden flex flex-col"
+        style={{
+          boxShadow: '0px 0px 0px 2px #A83C3C, 4px 4px 0px 0px #000000'
+        }}
       >
-        <DialogHeader className="p-6 pb-4 border-b border-slate-700/50 flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-2xl text-white enhanced-title">
-            <Inbox className="w-6 h-6 text-yellow-400" />
+        <DialogHeader className="p-6 pb-4 border-b-[3px] border-black flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-2xl text-white">
+            <Inbox className="w-6 h-6 text-[#fbbf24]" />
             线索收件箱
           </DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -175,7 +188,7 @@ export function ClueInboxPanel({
                         }`}
                       >
                         <div className="flex items-start gap-2">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${statusInfo.dotColor}`}></div>
+                          <div className={`w-2 h-2 mt-1.5 flex-shrink-0 ${statusInfo.dotColor}`}></div>
                           <div className="flex-1 min-w-0">
                             <div className={`text-xs font-medium leading-snug mb-1 ${
                               selectedClueIndex === idx ? 'text-yellow-200' : 'text-gray-300'
@@ -204,9 +217,11 @@ export function ClueInboxPanel({
               <ClueDetailView
                 clue={currentClue}
                 story={currentStory}
+                activeStory={activeStory} // 🔥 KISS案：传递活跃故事
                 isTracking={trackingClueId === currentClue.clue_id}
                 onTrack={handleTrackClue}
                 onEnterStory={onEnterStory} // 🔥 传递进入故事回调
+                onClose={() => onOpenChange(false)} // 🔥 传递关闭面板回调
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
@@ -239,15 +254,19 @@ export function ClueInboxPanel({
 function ClueDetailView({
   clue,
   story,
+  activeStory, // 🔥 KISS方案：接收活跃故事
   isTracking,
   onTrack,
-  onEnterStory // 🔥 接收进入故事回调
+  onEnterStory, // 🔥 接收进入故事回调
+  onClose // 🔥 接收关闭面板回调
 }: {
   clue: ClueRecord;
   story: StoryInstance | null;
+  activeStory: TrackedStoryData | null; // 🔥 KISS方案：接收活跃故事
   isTracking: boolean;
   onTrack: (clueId: string) => void;
   onEnterStory?: (clueId: string) => void; // 🔥 接收进入故事回调
+  onClose?: () => void; // 🔥 接收关闭面板回调
 }) {
   // 未追踪状态
   if (!story) {
@@ -258,11 +277,11 @@ function ClueDetailView({
           <div className="flex items-start justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 flex-1">
               <Target className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-              <h3 className="text-white enhanced-title break-words">
+              <h3 className="text-white break-words">
                 {clue.title}
               </h3>
             </div>
-            <Badge variant="outline" className="flex-shrink-0 bg-cyan-500/20 text-cyan-300 border-cyan-500/50">
+            <Badge variant="outline" className="flex-shrink-0 bg-white/90 text-black border-[3px] border-black">
               未追踪
             </Badge>
           </div>
@@ -275,19 +294,19 @@ function ClueDetailView({
 
         {/* 线索摘要 */}
         <div className="flex-1 overflow-auto">
-          <div className="text-xs text-gray-400 mb-2">线索摘要</div>
+          <div className="text-xs text-gray-400 mb-2">���索摘要</div>
           <p className="text-sm text-gray-200 break-words mb-3">
             {clue.description}
           </p>
           
-          <div className="p-3 bg-cyan-900/20 rounded-lg border border-cyan-500/30">
+          <div className="p-3 bg-[#fbbf24]/20 border-[3px] border-black">
             <div className="flex items-start gap-2">
-              <Eye className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+              <Eye className="w-4 h-4 text-black flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="text-sm text-cyan-300 mb-1 break-words">
+                <div className="text-sm text-black mb-1 break-words">
                   追踪此线索
                 </div>
-                <p className="text-xs text-cyan-200 break-words opacity-90">
+                <p className="text-xs text-gray-800 break-words opacity-90">
                   追踪此线索将开启关联的故事线。你可以前往对应场景展开调查。
                 </p>
               </div>
@@ -300,7 +319,10 @@ function ClueDetailView({
           <Button
             onClick={() => onTrack(clue.clue_id)}
             disabled={isTracking}
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-lg"
+            className="w-full bg-[#A83C3C] hover:bg-[#C85454] text-white border-[3px] border-black"
+            style={{
+              boxShadow: '0 0 0 2px #A83C3C, 3px 3px 0 #000'
+            }}
           >
             {isTracking ? (
               <>
@@ -349,7 +371,7 @@ function ClueDetailView({
             ) : (
               <Target className="w-5 h-5 text-yellow-400 flex-shrink-0" />
             )}
-            <h3 className="text-white enhanced-title break-words">
+            <h3 className="text-white break-words">
               {story.story_data.title}
             </h3>
           </div>
@@ -425,7 +447,7 @@ function ClueDetailView({
                       ) : isCurrent ? (
                         <Target className="w-3 h-3 text-yellow-400" />
                       ) : (
-                        <div className="w-3 h-3 rounded-full border border-gray-500" />
+                        <div className="w-3 h-3 border-[3px] border-gray-500" />
                       )}
                       <span className={
                         isCurrent ? 'text-yellow-200' : 
@@ -469,23 +491,65 @@ function ClueDetailView({
       </ScrollArea>
 
       {/* 底部行动按钮 */}
-      {!isCompleted && (
-        <div className="p-4 border-t border-slate-700/50">
-          <Button
-            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500"
-            onClick={() => {
-              // 🔥 调用进入故事回调
-              if (onEnterStory) {
-                console.log('[ClueInboxPanel] Enter story:', story.instance_id);
-                onEnterStory(clue.clue_id);
-              }
-            }}
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            继续故事
-          </Button>
-        </div>
-      )}
+      {!isCompleted && (() => {
+        const isNotStarted = story.status === 'not_started';
+        
+        // 🔥 KISS方案：判断是否正在进行其他故事
+        const isCurrentStory = activeStory?.entry_clue_id === clue.clue_id;
+        const isPlayingOther = activeStory && !isCurrentStory;
+        
+        const buttonDisabled = isPlayingOther;
+        const buttonClass = buttonDisabled 
+          ? "w-full opacity-50 cursor-not-allowed bg-gray-600 border-[3px] border-black"
+          : "w-full bg-[#A83C3C] hover:bg-[#C85454] text-white border-[3px] border-black";
+        const buttonStyle = buttonDisabled
+          ? undefined
+          : { boxShadow: '0 0 0 2px #A83C3C, 3px 3px 0 #000' };
+        
+        return (
+          <div className="p-4 border-t border-slate-700/50 space-y-2">
+            <Button
+              disabled={buttonDisabled}
+              className={buttonClass}
+              style={buttonStyle}
+              onClick={() => {
+                if (isNotStarted) {
+                  console.log('[ClueInboxPanel] 🎬 Enter story:', story.instance_id);
+                  onEnterStory?.(clue.clue_id);
+                } else {
+                  console.log('[ClueInboxPanel] ⏩ Continue story:', story.instance_id);
+                  onClose?.();
+                }
+              }}
+            >
+              {isPlayingOther ? (
+                <>
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  正在进行其他故事
+                </>
+              ) : isNotStarted ? (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  进入故事
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  继续故事
+                </>
+              )}
+            </Button>
+            
+            {/* 🔥 KISS方案：提示当前进行中的故事 */}
+            {isPlayingOther && activeStory && (
+              <div className="text-center text-amber-400 text-xs flex items-center justify-center gap-1.5">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                <span>当前正在进行：{activeStory.title}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
